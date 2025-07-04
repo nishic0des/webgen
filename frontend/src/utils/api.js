@@ -29,3 +29,7 @@ export const saveVisualEdit = async (pageId, updatedHtml, updatedCss) => {
 		css: updatedCss,
 	});
 };
+
+export const getPromptExamples = () => API.get("/prompt-examples");
+
+export const validatePrompt = (description) => API.post("/validate-prompt", description);

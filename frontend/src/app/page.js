@@ -5,11 +5,16 @@ import {
 	getPage,
 	editPage,
 	saveVisualEdit,
+	getPromptExamples,
+	validatePrompt,
 } from "@/utils/api";
 import ElementEditor from "./ElementEditor";
 
 export default function Home() {
 	const [description, setDescription] = useState("");
+	const [promptScore, setPromptScore] = useState(null);
+	const [showExamples, setShowExamples] = useState(false);
+	const [promptExamples, setPromptExamples] = useState({});
 	const [pages, setPages] = useState([]);
 	const [currentPage, setCurrentPage] = useState(null);
 	const [loading, setLoading] = useState(false);
@@ -19,6 +24,45 @@ export default function Home() {
 	const [selectedElement, setSelectedElement] = useState(null);
 	const [editingMode, setEditingMode] = useState(false);
 
+	// Prompt templates for quick start
+	const promptTemplates = {
+		business: "Create a professional business website for a digital marketing agency targeting small businesses. Include Home with services overview, About Us, Services, Testimonials, and Contact. Use modern, trustworthy design with clean typography.",
+		portfolio: "Build a creative portfolio website for a UX designer targeting potential clients. Include Home with showcase, About with bio, Portfolio/Work samples, Services offered, and Contact. Use minimal, elegant design that highlights the work.",
+		ecommerce: "Design an e-commerce website for sustainable fashion targeting environmentally conscious consumers. Include Home with featured products, Product catalog, About the brand, Shopping cart, and Contact. Use conversion-focused design with clear CTAs.",
+		restaurant: "Create an elegant website for an Italian restaurant targeting food enthusiasts. Include Home with atmosphere photos, Menu with offerings, About with chef story, Gallery with food photos, Reservations, and Contact. Use warm, sophisticated design.",
+		blog: "Create a modern blog website for tech insights targeting developers. Include Home with recent posts, About the author, Category pages, Archive, and Contact. Use readable typography and engaging layout."
+	};
+
+	// Load prompt examples on mount
+	useEffect(() => {
+		const loadExamples = async () => {
+			try {
+				const { data } = await getPromptExamples();
+				setPromptExamples(data.examples);
+			} catch (error) {
+				console.error('Failed to load examples:', error);
+			}
+		};
+		loadExamples();
+	}, []);
+
+	// Real-time prompt quality evaluation
+	const evaluatePrompt = (text) => {
+		let score = 0;
+		const words = text.split(' ').length;
+		
+		if (words >= 20) score += 25;
+		if (/(for|targeting|audience|users|clients|customers)/.test(text.toLowerCase())) score += 25;
+		if (/(page|section|about|contact|home|services|portfolio|blog)/.test(text.toLowerCase())) score += 25;
+		if (/(modern|clean|professional|minimalist|design|style|elegant)/.test(text.toLowerCase())) score += 25;
+		
+		setPromptScore({
+			score,
+			color: score >= 75 ? 'text-green-400' : score >= 50 ? 'text-yellow-400' : 'text-red-400',
+			grade: score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Improvement'
+		});
+	};
+
 	const handleGenerate = async () => {
 		setLoading(true);
 		try {
@@ -27,6 +71,15 @@ export default function Home() {
 			if (data.pages.length > 0) {
 				setCurrentPage(data.pages[0]);
 				setCurrentPageId(0);
+			}
+			
+			// Show prompt quality feedback if available
+			if (data.prompt_quality) {
+				const quality = data.prompt_quality;
+				console.log(`Prompt Quality: ${quality.grade} (${quality.score}/100)`);
+				if (data.suggestions) {
+					console.log("Suggestions for next time:", data.suggestions);
+				}
 			}
 		} catch (error) {
 			console.error("Error generating website:", error);
@@ -227,29 +280,118 @@ export default function Home() {
 							</h2>
 
 							<div className="space-y-8">
-								<div className="relative">
-									<textarea
-										placeholder="Describe your website architecture..."
-										value={description}
-										onChange={(e) => setDescription(e.target.value)}
-										className="w-full h-40 rounded-xl px-6 py-4 text-cyan-100 resize-none font-mono text-sm transition-all duration-500"
-										style={{
-											backgroundColor: "rgba(0, 0, 0, 0.8)",
-											border: "1px solid rgba(0, 255, 255, 0.4)",
-											backdropFilter: "blur(5px)",
-										}}
-										onFocus={(e) => {
-											e.target.style.borderColor = "#00ffff";
-											e.target.style.boxShadow =
-												"0 0 20px rgba(0, 255, 255, 0.2)";
-										}}
-										onBlur={(e) => {
-											e.target.style.borderColor = "rgba(0, 255, 255, 0.4)";
-											e.target.style.boxShadow = "none";
-										}}
-									/>
-									<div className="absolute bottom-2 right-2 text-xs text-cyan-500/60 font-mono">
-										{description.length}/1000
+								{/* Enhanced Prompt Helper */}
+								<div className="space-y-6">
+									{/* Prompt Quality Indicator */}
+									{promptScore && (
+										<div className={`text-center text-sm ${promptScore.color}`}>
+											Prompt Quality: {promptScore.score}% ({promptScore.grade})
+											{promptScore.score < 50 && (
+												<div className="text-xs text-gray-400 mt-1">
+													Try adding more details about purpose, audience, and pages
+												</div>
+											)}
+										</div>
+									)}
+
+									{/* Quick Start Templates */}
+									<div className="mb-4">
+										<div className="flex justify-between items-center mb-3">
+											<h4 className="text-cyan-400 text-sm font-medium">🚀 Quick Start Templates</h4>
+											<button 
+												onClick={() => setShowExamples(!showExamples)}
+												className="text-cyan-400 text-xs hover:text-cyan-300 transition-colors"
+											>
+												{showExamples ? 'Hide' : 'Show'} Examples
+											</button>
+										</div>
+										<div className="flex flex-wrap gap-2">
+											{Object.entries(promptTemplates).map(([key, template]) => (
+												<button
+													key={key}
+													onClick={() => {
+														setDescription(template);
+														evaluatePrompt(template);
+													}}
+													className="px-3 py-1 text-xs bg-cyan-600/20 text-cyan-300 rounded hover:bg-cyan-600/30 transition-colors"
+												>
+													{key.charAt(0).toUpperCase() + key.slice(1)}
+												</button>
+											))}
+										</div>
+									</div>
+
+									{/* Prompt Writing Guide */}
+									{showExamples && Object.keys(promptExamples).length > 0 && (
+										<div className="p-4 rounded-lg bg-gray-800/50 border border-cyan-400/30">
+											<h4 className="text-cyan-400 font-medium mb-3">💡 Example High-Quality Prompts</h4>
+											<div className="space-y-3 text-xs">
+												{Object.entries(promptExamples).map(([key, example]) => (
+													<div key={key} className="border-l-2 border-cyan-400/30 pl-3">
+														<div className="text-white font-medium mb-1">{example.title}</div>
+														<div className="text-gray-400 line-clamp-2">{example.prompt}</div>
+														<div className="text-green-400 text-xs">Quality: {example.quality_score}%</div>
+													</div>
+												))}
+											</div>
+										</div>
+									)}
+
+									{/* Writing Tips */}
+									<div className="p-4 rounded-lg bg-gray-800/50 border border-cyan-400/30">
+										<h4 className="text-cyan-400 font-medium mb-3">✅ Write Better Prompts</h4>
+										<div className="grid md:grid-cols-2 gap-4 text-sm">
+											<div>
+												<h5 className="text-white font-medium mb-2">Include These:</h5>
+												<ul className="text-gray-300 space-y-1 text-xs">
+													<li>• Website purpose & business type</li>
+													<li>• Target audience</li>
+													<li>• Specific pages needed</li>
+													<li>• Design style preferences</li>
+													<li>• Key features required</li>
+												</ul>
+											</div>
+											<div>
+												<h5 className="text-white font-medium mb-2">📝 Example Structure:</h5>
+												<p className="text-gray-400 text-xs leading-relaxed">
+													"Create a [TYPE] website for [BUSINESS] targeting [AUDIENCE]. 
+													Include [PAGES]. Use [STYLE] design with [COLORS/FEATURES]."
+												</p>
+											</div>
+										</div>
+									</div>
+
+									{/* Main Description Textarea */}
+									<div className="relative">
+										<textarea
+											placeholder="Describe your website in detail... (e.g., Create a modern portfolio website for a UX designer targeting potential clients...)"
+											value={description}
+											onChange={(e) => {
+												setDescription(e.target.value);
+												evaluatePrompt(e.target.value);
+											}}
+											className="w-full h-40 rounded-xl px-6 py-4 text-cyan-100 resize-none font-mono text-sm transition-all duration-500"
+											style={{
+												backgroundColor: "rgba(0, 0, 0, 0.8)",
+												border: "1px solid rgba(0, 255, 255, 0.4)",
+												backdropFilter: "blur(5px)",
+											}}
+											onFocus={(e) => {
+												e.target.style.borderColor = "#00ffff";
+												e.target.style.boxShadow = "0 0 20px rgba(0, 255, 255, 0.2)";
+											}}
+											onBlur={(e) => {
+												e.target.style.borderColor = "rgba(0, 255, 255, 0.4)";
+												e.target.style.boxShadow = "none";
+											}}
+										/>
+										<div
+											className="absolute bottom-4 right-4 w-3 h-3 rounded-full"
+											style={{
+												backgroundColor: description.length > 50 ? "#00ff00" : description.length > 20 ? "#ffff00" : "#ff0000",
+												animation: "pulse 2s infinite",
+											}}
+										/>
 									</div>
 								</div>
 
