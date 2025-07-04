@@ -555,7 +555,7 @@ export default function Home() {
 				)}
 			</div>
 
-			{/* Element Editor Modal */}
+			{/* Element Editor Model */}
 			{selectedElement && (
 				<div
 					className="fixed inset-0 flex items-center justify-center z-50"
