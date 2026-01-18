@@ -1,13 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from openai import OpenAI
 import os
 import json
 from typing import Dict, List
 from dotenv import load_dotenv
-from pydantic import conint, validator, BaseModel, Field
-from fastapi import Body
+from pydantic import BaseModel, Field
 from google import genai
 
 # Initialize OpenAI client
