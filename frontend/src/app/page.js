@@ -18,6 +18,23 @@ export default function Home() {
 	const [currentPageId, setCurrentPageId] = useState(0);
 	const [selectedElement, setSelectedElement] = useState(null);
 	const [editingMode, setEditingMode] = useState(false);
+	const [viewMode, setViewMode] = useState("preview"); // "preview" or "code"
+	const [showToast, setShowToast] = useState(false);
+	const [toastMessage, setToastMessage] = useState("");
+
+	const handleCopyCode = async (code, type) => {
+		try {
+			await navigator.clipboard.writeText(code);
+			setToastMessage(`${type} copied to clipboard!`);
+			setShowToast(true);
+			setTimeout(() => setShowToast(false), 2000);
+		} catch (err) {
+			console.error("Failed to copy:", err);
+			setToastMessage("Failed to copy code");
+			setShowToast(true);
+			setTimeout(() => setShowToast(false), 2000);
+		}
+	};
 
 	const handleGenerate = async () => {
 		setLoading(true);
@@ -49,7 +66,7 @@ export default function Home() {
 				currentPageId,
 				editPrompt,
 				currentPage.html,
-				currentPage.css
+				currentPage.css,
 			);
 			setCurrentPage(data.page);
 			setEditPrompt("");
@@ -407,7 +424,7 @@ export default function Home() {
 										"linear-gradient(45deg, rgba(0, 255, 0, 0.2), rgba(0, 255, 255, 0.2))",
 								}}></div>
 							<div
-								className="relative rounded-2xl border shadow-2xl overflow-hidden"
+								className="relative rounded-2xl border shadow-2xl"
 								style={{
 									backgroundColor: "rgba(17, 24, 39, 0.8)",
 									borderColor: "rgba(0, 255, 0, 0.3)",
@@ -513,26 +530,163 @@ export default function Home() {
 								{/* Preview Frame */}
 								<div className="p-8">
 									<div className="relative">
+										{/* View Mode Toggle Buttons */}
+										<div className="absolute top-4 right-4 z-10 flex space-x-1">
+											<div className="flex bg-gray-800/80 backdrop-blur-md rounded-full p-1 border border-gray-700/50 shadow-xl">
+												<button
+													type="button"
+													onClick={() => setViewMode("preview")}
+													className={`relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+														viewMode === "preview"
+															? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/25"
+															: "text-gray-400 hover:text-white hover:bg-gray-700/50"
+													}`}>
+													{viewMode === "preview" && (
+														<div className="absolute inset-0 rounded-full bg-blue-500/20 blur-md"></div>
+													)}
+													<span className="relative flex items-center space-x-2">
+														<svg
+															className="w-4 h-4"
+															fill="none"
+															stroke="currentColor"
+															viewBox="0 0 24 24">
+															<path
+																strokeLinecap="round"
+																strokeLinejoin="round"
+																strokeWidth={2}
+																d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+															/>
+															<path
+																strokeLinecap="round"
+																strokeLinejoin="round"
+																strokeWidth={2}
+																d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+															/>
+														</svg>
+													</span>
+												</button>
+												<button
+													type="button"
+													onClick={() => setViewMode("code")}
+													className={`relative px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 ${
+														viewMode === "code"
+															? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/25"
+															: "text-gray-400 hover:text-white hover:bg-gray-700/50"
+													}`}>
+													{viewMode === "code" && (
+														<div className="absolute inset-0 rounded-full bg-purple-500/20 blur-md"></div>
+													)}
+													<span className="relative flex items-center space-x-2">
+														<svg
+															className="w-4 h-4"
+															fill="none"
+															stroke="currentColor"
+															viewBox="0 0 24 24">
+															<path
+																strokeLinecap="round"
+																strokeLinejoin="round"
+																strokeWidth={2}
+																d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+															/>
+														</svg>
+													</span>
+												</button>
+											</div>
+										</div>
+
 										<div
 											className="absolute -inset-2 rounded-xl blur"
 											style={{
 												background:
 													"linear-gradient(45deg, rgba(0, 255, 255, 0.1), rgba(128, 0, 255, 0.1))",
 											}}></div>
-										<iframe
-											srcDoc={iframeHtml}
-											className="relative w-full h-[700px] rounded-xl bg-white shadow-2xl"
-											style={{
-												border: "1px solid rgba(0, 255, 255, 0.3)",
-												backdropFilter: "blur(5px)",
-											}}
-											onLoad={(e) => {
-												e.target.contentWindow.editingEnabled = editingMode;
-											}}
-										/>
-										{editingMode && (
+										{viewMode === "preview" ? (
+											<iframe
+												srcDoc={iframeHtml}
+												className="relative w-full h-[700px] rounded-xl bg-white shadow-2xl"
+												style={{
+													border: "1px solid rgba(0, 255, 255, 0.3)",
+													backdropFilter: "blur(5px)",
+												}}
+												onLoad={(e) => {
+													e.target.contentWindow.editingEnabled = editingMode;
+												}}
+											/>
+										) : (
+											<div className="relative w-full h-[700px] rounded-xl bg-gray-900 shadow-2xl overflow-auto">
+												<div className="p-4">
+													<div className="mb-4">
+														<div className="flex items-center mb-2">
+															<h3 className="text-white text-lg font-semibold mr-2">
+																HTML
+															</h3>
+															<button
+																type="button"
+																onClick={() =>
+																	handleCopyCode(
+																		currentPage?.html || "",
+																		"HTML",
+																	)
+																}
+																className="p-1 text-gray-400 hover:text-white transition-colors"
+																title="Copy HTML">
+																<svg
+																	className="w-5 h-5"
+																	fill="none"
+																	stroke="currentColor"
+																	viewBox="0 0 24 24">
+																	<path
+																		strokeLinecap="round"
+																		strokeLinejoin="round"
+																		strokeWidth={2}
+																		d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+																	/>
+																</svg>
+															</button>
+														</div>
+														<pre className="bg-gray-800 p-4 rounded-lg overflow-auto text-green-400 text-sm font-mono">
+															<code>
+																{currentPage?.html || "No HTML content"}
+															</code>
+														</pre>
+													</div>
+													<div className="mb-4">
+														<div className="flex items-center mb-2">
+															<h3 className="text-white text-lg font-semibold mr-2">
+																CSS
+															</h3>
+															<button
+																type="button"
+																onClick={() =>
+																	handleCopyCode(currentPage?.css || "", "CSS")
+																}
+																className="p-1 text-gray-400 hover:text-white transition-colors"
+																title="Copy CSS">
+																<svg
+																	className="w-5 h-5"
+																	fill="none"
+																	stroke="currentColor"
+																	viewBox="0 0 24 24">
+																	<path
+																		strokeLinecap="round"
+																		strokeLinejoin="round"
+																		strokeWidth={2}
+																		d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+																	/>
+																</svg>
+															</button>
+														</div>
+														<pre className="bg-gray-800 p-4 rounded-lg overflow-auto text-blue-400 text-sm font-mono">
+															<code>
+																{currentPage?.css || "No CSS content"}
+															</code>
+														</pre>
+													</div>
+												</div>
+											</div>
+										)}
+										{editingMode && viewMode === "preview" && (
 											<div
-												className="absolute top-4 right-4 px-4 py-2 rounded-lg text-black text-sm font-light uppercase shadow-lg"
 												style={{
 													background:
 														"linear-gradient(45deg, #00ffff, #0080ff)",
@@ -582,22 +736,22 @@ export default function Home() {
 										selectedElement.html,
 										`<${updatedElement.tagName} style="color: ${updatedElement.styles.color}; background-color: ${updatedElement.styles.backgroundColor}; font-size: ${updatedElement.styles.fontSize}">
 					${updatedElement.content}
-				  </${updatedElement.tagName}>`
+				  </${updatedElement.tagName}>`,
 									),
 									css: `${currentPage.css}\n${newCssRule}`,
 								};
 								setCurrentPage(updatedPage);
 								setPages((prevPages) =>
 									prevPages.map((p, idx) =>
-										idx === currentPageId ? updatedPage : p
-									)
+										idx === currentPageId ? updatedPage : p,
+									),
 								);
 								setSelectedElement(null);
 								try {
 									await saveVisualEdit(
 										currentPageId,
 										updatedPage.html,
-										updatedPage.css
+										updatedPage.css,
 									);
 								} catch (err) {
 									alert("Failed to save changes to server.");
@@ -610,7 +764,43 @@ export default function Home() {
 				</div>
 			)}
 
+			{/* Toast Notification */}
+			{showToast && (
+				<div
+					className="fixed bottom-8 right-8 px-6 py-3 bg-green-500 text-white rounded-lg shadow-lg z-50"
+					style={{
+						animation: "slideInRight 0.3s ease-out",
+						boxShadow: "0 4px 20px rgba(0, 255, 0, 0.3)",
+					}}>
+					<div className="flex items-center space-x-2">
+						<svg
+							className="w-5 h-5"
+							fill="none"
+							stroke="currentColor"
+							viewBox="0 0 24 24">
+							<path
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								strokeWidth={2}
+								d="M5 13l4 4L19 7"
+							/>
+						</svg>
+						<span className="font-medium">{toastMessage}</span>
+					</div>
+				</div>
+			)}
+
 			<style jsx>{`
+				@keyframes slideInRight {
+					from {
+						opacity: 0;
+						transform: translateX(100%);
+					}
+					to {
+						opacity: 1;
+						transform: translateX(0);
+					}
+				}
 				@keyframes fadeIn {
 					from {
 						opacity: 0;

@@ -8,10 +8,12 @@ from typing import Dict, List
 from dotenv import load_dotenv
 from pydantic import conint, validator, BaseModel, Field
 from fastapi import Body
+from google import genai
 
 # Initialize OpenAI client
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+#client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client=genai.Client()
 
 app = FastAPI(
     title="AI Website Generator",
@@ -64,27 +66,43 @@ website_data: Dict = {
 @app.post("/generate")
 async def generate_website(request: WebsiteRequest):
     """Generate a complete website from description"""
-    prompt = f"""Create a complete website based on: {request.description}
-    Return valid JSON with:
+    prompt = f"""You are an expert web developer. Create a complete, modern website based on this description: {request.description}
+
+    Requirements:
+    - Use semantic HTML5 tags (header, nav, main, section, article, footer)
+    - Include responsive design with CSS Grid/Flexbox
+    - Add hover effects and smooth transitions
+    - Use modern CSS properties (custom properties, backdrop-filter, etc.)
+    - Ensure accessibility (ARIA labels, semantic markup)
+    - Create 3-5 interconnected pages with navigation
+    - Use a cohesive color scheme and typography
+    - Generate ALL styling from scratch - no hardcoded example styles
+    
+    Return valid JSON with this exact structure:
     {{
         "pages": [
             {{
                 "name": "Home",
-                "html": "<div>...</div>",
-                "css": "body {{ background: white; }}"
+                "html": "<complete semantic HTML structure>",
+                "css": "complete custom CSS styling"
             }}
         ],
-        "global_css": "body {{ font-family: Arial; }}"
+        "global_css": "global styles for the entire website"
     }}
+    
+    Make the HTML and CSS detailed, production-ready, and completely original.
     """
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
-        data = json.loads(response.choices[0].message.content)
+        data = json.loads(response.text)
+        print("Generated data:", data)
         website_data.update(data)
         return {"status": "success", "pages": data["pages"]}
     except Exception as e:
@@ -116,20 +134,42 @@ async def edit_page(request: EditRequest):
             
         current_page = website_data["pages"][request.page_id]  # Fixed variable access
         
-        prompt = f"""Modify this page:
-        Current HTML: {current_page["html"]}
-        Current CSS: {current_page["css"]}
-        Instructions: {request.edit_prompt}
-        Return valid JSON with new "html" and "css".
+        prompt = f"""You are an expert web developer. Modify this existing page according to the instructions.
+        
+        Current HTML:
+        {current_page["html"]}
+        
+        Current CSS:
+        {current_page["css"]}
+        
+        Modification Instructions: {request.edit_prompt}
+        
+        Guidelines:
+        - Maintain the existing structure and functionality
+        - Enhance visual appeal with modern CSS techniques
+        - Ensure responsiveness and accessibility
+        - Use semantic HTML5 best practices
+        - Add smooth transitions and micro-interactions where appropriate
+        - Keep the same color scheme unless specifically asked to change
+        
+        Return valid JSON with exactly this structure:
+        {{
+            "html": "<updated>html</updated>",
+            "css": "<updated>css</updated>"
+        }}
+        
+        Make the improvements production-ready and professional.
         """
         
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
+        response = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
         
-        edited_data = json.loads(response.choices[0].message.content)
+        edited_data = json.loads(response.text)
         website_data["pages"][request.page_id].update(edited_data)
         return {"status": "success", "page": edited_data}
         
