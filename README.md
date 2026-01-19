@@ -40,7 +40,7 @@ cd webgen
 Create a `.env` file in the `backend/` directory:
 
 ```
-OPENAI_API_KEY=your-openai-api-key
+GEMINI_API_KEY=your-gemini-api-key
 ```
 
 #### b. Install Dependencies
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 If `requirements.txt` is missing, install manually:
 
 ```bash
-pip install fastapi uvicorn python-dotenv openai
+pip install fastapi uvicorn python-dotenv google-genai
 ```
 
 #### c. Run the Backend
