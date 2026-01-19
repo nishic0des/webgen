@@ -4,8 +4,9 @@ import os
 import json
 from typing import Dict, List
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, conint
 from google import genai
+from fastapi import Body
 
 # Initialize OpenAI client
 load_dotenv()
@@ -46,18 +47,21 @@ class WebsiteRequest(BaseModel):
     description: str = "A portfolio website with 3 pages"
 
 class EditRequest(BaseModel):
-    page_id: conint(ge=0)
+    page_id: int = Field(..., ge=0)
     edit_prompt: str = Field(..., min_length=5)
     current_html: str
     current_css: str
 
-    @validator('page_id')
-    def validate_prompt(cls, v, values):
-        if v >= len(website_data["pages"]):  
+    @field_validator('page_id')
+    @classmethod
+    def validate_page_id(cls, v):
+        if v >= len(website_data.get("pages", [])):
             raise ValueError("Page does not exist")
         return v
-    @validator('edit_prompt')
-    def validate_prompt(cls, v):
+    
+    @field_validator('edit_prompt')
+    @classmethod
+    def validate_edit_prompt(cls, v):
         if len(v) < 5:
             raise ValueError("Edit prompt must be at least 5 characters")
         return v
